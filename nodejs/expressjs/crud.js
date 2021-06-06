@@ -1,96 +1,114 @@
-var db = require('app-root-path').require('/bin/db.js');
-var express = require('express');
+const express = require('express');
 
-function CRUDRouter(collection, ids, properties) {
-    this.collection = collection;
-    this.ids = ids;
-    this.properties = properties;
-    this.uri = ids.map(id => `/:${id}`).join();
-    this.coll = db.database.collection(collection);
-    this.getQuery = function (params) {
-        result = {};
-        this.ids.map(id => result[id] = params[id]);
+const ID_PROPERTY = 'id';
+const PROPERTY = null;
+
+class CRUDController {
+    constructor(collection, object) {
+        if (!Object.values(object).includes('id')) {
+            throw "Object has to have a id property"
+        }
+        this.object = object;
+        this.collection = collection;
+    }
+
+    query(object) {
+        const result = {};
+        Object.keys(this.object)
+              .filter(k => this.object[k] == 'id')
+              .map(id => result[id] = object[id])
         return result;
-    };
-    this.checkProperties = function (object, properties) {
-        var objectKeys = Object.keys(object).sort();
-        var properties = properties.sort();
-        var checks = objectKeys.map((key, i) => { return key === properties[i];});
-        return !checks.includes(false);
-    };
-    this.get = async function (params) {
-        const query = this.getQuery(params);
-        const elem = await this.coll.findOne(query);
-        return elem;
-    };
-    this.post = async function (elem) {
-        if (!this.checkProperties(elem, this.properties)) {
-            return null;
+    }
+
+    sameKeys(object1, object2) {
+        const object1Keys = Object.keys(object1).sort();
+        const object2Keys = Object.keys(object2).sort();
+        
+        if (object1Keys === object2Keys) return true;
+        if (object1Keys == null || object2Keys == null) return false;
+        if (object1Keys.length !== object2Keys.length) return false;
+
+        for (var i = 0; i < object1Keys.length; ++i) {
+            if (object1Keys[i] !== object2Keys[i]) return false;
+        }
+        return true;
+    }
+
+    async get(req, res) {
+        const query = this.query(req.params);
+        const elem = await this.collection.findOne(query);
+        const code = null !== elem ? 200 : 404;
+        return res.status(code).send(elem);
+    }
+
+    async post(req, res) {
+        let elem = null
+        if (this.sameKeys(req.body, this.object)) {
+            const query = this.query(req.body);
+            if (null === await this.coll.findOne(query)) {
+                const result = await this.collection.insertOne(elem);
+                elem = result.ops;
+            }
         }
 
-        const query = this.getQuery(elem);
-        if (null === await this.coll.findOne(query)) {
-            const result = await this.coll.insertOne(elem);
-            return result.ops;
+        const code = null !== elem ? 200 : 404;
+        return res.status(code).send(elem);
+    }
+
+    async put(req, res) {
+        let elem = null;
+        if (this.sameKeys(req.body, this.object)) {
+            const query = this.getQuery(req.params);
+            const options = { upsert: true };
+            const result = await this.collection.replaceOne(query, elem, options);
+
+            if (result.matchedCount > 0) elem = result.ops;
         }
 
-        return null;
-    };
-    this.put = async function(params, elem) {
-        if (!this.checkProperties(elem, this.properties)) {
-            return null;
-        }
+        const code = null !== elem ? 200 : 404;
+        return res.status(code).send(elem);
+    }
 
-        const query = this.getQuery(params);
-        const options = { upsert: true };
-        const result = await this.coll.replaceOne(query, elem, options);
-
-        if (result.matchedCount > 0) {
-            return result.ops;
-        }
-        return null;
-    };
-    this.delete = async function(params) {
-        const query = this.getQuery(params);
-        const result = await this.coll.deleteOne(query);
-
-        if (result.deletedCount > 0) {
-            return '';
-        }
-        return null;
-    };
+    async delete(req, res) {
+        const query = this.getQuery(req.params);
+        const result = await this.collection.deleteOne(query);
+        const code = result.deletedCount > 0 ? 200 : 404;
+        return res.status(code).send();
+    }
 }
 
-function buildRouter(collection, ids, properties) {
-    const crudRouter = new CRUDRouter(collection, ids, properties);
-    const router = express.Router();
+const CRUDRouterBuilder = {
+    build(path, collection, object) {
+        const controller = new CRUDController(collection, object);
+        const uri = path.concat(Object.keys(object)
+                                      .filter(k => object[k] == 'id')
+                                      .map(id => `/:${id}`)
+                                      .join());
 
-    router.get(crudRouter.uri, async function(req, res) {
-        const elem = await crudRouter.get(req.params);
-        const code = null !== elem ? 200 : 404;
-        return res.status(code).send(elem);
-    });
-      
-    router.post('/', async function(req, res) {
-        const elem = await crudRouter.post(req.body);
-        const code = null !== elem ? 200 : 404;
-        return res.status(code).send(elem);
-    });
-      
-    router.put(crudRouter.uri, async function(req, res) {
-        const elem = await crudRouter.put(req.params, req.body);
-        const code = null !== elem ? 200 : 404;
-        return res.status(code).send(elem);
-    });
-      
-    router.delete(crudRouter.uri, async function(req, res) {
-        const elem = await crudRouter.delete(req.params);
-        const code = null !== elem ? 200 : 404;
-        return res.status(code).send(elem);
-    });
+        const router = express.Router();
 
-    return router;
+        router.get(uri, (req, res, next) => controller.get(req, res));
+        router.post('/', (req, res, next) => controller.post(req, res));
+        router.put(uri, (req, res, next) => controller.put(req, res));
+        router.delete(uri, (req, res, next) => controller.delete(req, res));
+
+        return router;
+    }
 }
 
-module.exports.CRUDRouter = CRUDRouter;
-module.exports.buildRouter = buildRouter;
+const CRUDAPIBuilder = {
+    build(database, model) {
+        return Object.keys(model).map(c => {
+            const collection = database.collection(c);
+            const path = '/'.concat(c);
+            const object = model[c];
+            return CRUDRouterBuilder.build(path, collection, object);
+        });
+    }
+}
+
+module.exports.ID_PROPERTY = ID_PROPERTY;
+module.exports.PROPERTY = PROPERTY;
+module.exports.CRUDController = CRUDController;
+module.exports.CRUDRouterBuilder = CRUDRouterBuilder;
+module.exports.CRUDAPIBuilder = CRUDAPIBuilder;
