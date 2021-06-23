@@ -45,8 +45,8 @@ class CRUDController {
         let elem = null
         if (this.sameKeys(req.body, this.object)) {
             const query = this.query(req.body);
-            if (null === await this.coll.findOne(query)) {
-                const result = await this.collection.insertOne(elem);
+            if (null === await this.collection.findOne(query)) {
+                const result = await this.collection.insertOne(req.body);
                 elem = result.ops;
             }
         }
@@ -58,9 +58,9 @@ class CRUDController {
     async put(req, res) {
         let elem = null;
         if (this.sameKeys(req.body, this.object)) {
-            const query = this.getQuery(req.params);
+            const query = this.query(req.params);
             const options = { upsert: true };
-            const result = await this.collection.replaceOne(query, elem, options);
+            const result = await this.collection.replaceOne(query, req.body, options);
 
             if (result.matchedCount > 0) elem = result.ops;
         }
@@ -70,7 +70,7 @@ class CRUDController {
     }
 
     async delete(req, res) {
-        const query = this.getQuery(req.params);
+        const query = this.query(req.params);
         const result = await this.collection.deleteOne(query);
         const code = result.deletedCount > 0 ? 200 : 404;
         return res.status(code).send();
@@ -83,12 +83,12 @@ const CRUDRouterBuilder = {
         const uri = path.concat(Object.keys(object)
                                       .filter(k => object[k] == 'id')
                                       .map(id => `/:${id}`)
-                                      .join());
+                                      .join(''));
 
         const router = express.Router();
 
         router.get(uri, (req, res, next) => controller.get(req, res));
-        router.post('/', (req, res, next) => controller.post(req, res));
+        router.post(path, (req, res, next) => controller.post(req, res));
         router.put(uri, (req, res, next) => controller.put(req, res));
         router.delete(uri, (req, res, next) => controller.delete(req, res));
 
