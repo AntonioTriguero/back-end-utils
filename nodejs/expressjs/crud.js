@@ -15,7 +15,7 @@ class CRUDController {
     query(object) {
         const result = {};
         Object.keys(this.object)
-              .filter(k => this.object[k] == 'id')
+              .filter(k => this.object[k] == 'id' && k in object)
               .map(id => result[id] = object[id])
         return result;
     }
@@ -80,17 +80,18 @@ class CRUDController {
 const CRUDRouterBuilder = {
     build(path, collection, object) {
         const controller = new CRUDController(collection, object);
-        const uri = path.concat(Object.keys(object)
-                                      .filter(k => object[k] == 'id')
-                                      .map(id => `/:${id}`)
-                                      .join(''));
+        const ids = Object.keys(object).filter(k => object[k] == 'id');
+        const mainUri = path.concat(ids.map(id => `/:${id}`).join(''));
+        const getUris = ids.map(id => `${path}/:${id}`).concat(path);
 
         const router = express.Router();
 
-        router.get(uri, (req, res, next) => controller.get(req, res));
+        for (const uri of getUris) {
+            router.get(uri, (req, res, next) => controller.get(req, res));
+        }
         router.post(path, (req, res, next) => controller.post(req, res));
-        router.put(uri, (req, res, next) => controller.put(req, res));
-        router.delete(uri, (req, res, next) => controller.delete(req, res));
+        router.put(mainUri, (req, res, next) => controller.put(req, res));
+        router.delete(mainUri, (req, res, next) => controller.delete(req, res));
 
         return router;
     }
