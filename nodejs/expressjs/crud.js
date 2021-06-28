@@ -37,6 +37,7 @@ class CRUDController {
     async get(req, res) {
         const query = this.query(req.params);
         const elem = await this.collection.findOne(query);
+        delete elem["_id"];
         const code = null !== elem ? 200 : 404;
         return res.status(code).send(elem);
     }
@@ -48,6 +49,7 @@ class CRUDController {
             if (null === await this.collection.findOne(query)) {
                 const result = await this.collection.insertOne(req.body);
                 elem = result.ops;
+                delete elem["_id"];
             }
         }
 
@@ -62,7 +64,10 @@ class CRUDController {
             const options = { upsert: true };
             const result = await this.collection.replaceOne(query, req.body, options);
 
-            if (result.matchedCount > 0) elem = result.ops;
+            if (result.matchedCount > 0) {
+                elem = result.ops;
+                delete elem["_id"];
+            }
         }
 
         const code = null !== elem ? 200 : 404;
