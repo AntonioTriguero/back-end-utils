@@ -37,7 +37,7 @@ class CRUDController {
     async get(req, res) {
         const query = this.query(req.params);
         const elem = await this.collection.findOne(query);
-        delete elem["_id"];
+        if (elem !== null) delete elem["_id"];
         const code = null !== elem ? 200 : 404;
         return res.status(code).send(elem);
     }
