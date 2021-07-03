@@ -1,6 +1,6 @@
 import numpy as np
 
-def item_probabily(distribution: np.array, elem):
-	unique, counts = numpy.unique(distribution, return_counts=True)
+def item_probabily(observation: np.array, elem):
+	unique, counts = numpy.unique(observation, return_counts=True)
 	counts = dict(zip(unique, counts))
-	return counts[elem] / distribution.shape[0]
+	return counts[elem] / observation.shape[0]
