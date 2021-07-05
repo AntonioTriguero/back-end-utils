@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 
 const Auth = {
-    build(usersCollection) {
+    build(usersCollection, payloadData) {
         const users = usersCollection;
         const accessTokenSecret = 'youraccesstokensecret';
         const refreshTokenSecret = 'yourrefreshtokensecrethere';
@@ -11,14 +11,13 @@ const Auth = {
         const router = express.Router();
 
         router.post('/login', (req, res) => {
-            const { username, password } = req.body;
-            const user = users.find(u => { return u.username === username && u.password === password });
+            const { id } = req.body;
+            const user = users.find(u => { return u.id === id });
         
             if (user) {
-                const accessToken = jwt.sign({ username: user.username, role: user.role }, 
-                                               accessTokenSecret, 
-                                               { expiresIn: '20m' });
-                const refreshToken = jwt.sign({ username: user.username, role: user.role }, refreshTokenSecret);
+                payloadData['uid'] = user.id;
+                const accessToken = jwt.sign(payloadData, accessTokenSecret, { expiresIn: '20m' });
+                const refreshToken = jwt.sign(payloadData, refreshTokenSecret);
         
                 refreshTokens.push(refreshToken);
         
