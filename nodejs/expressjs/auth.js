@@ -16,7 +16,7 @@ const Auth = {
         
             if (user) {
                 payloadData['uid'] = user.id;
-                const accessToken = jwt.sign(payloadData, accessTokenSecret, { expiresIn: '20m' });
+                const accessToken = jwt.sign(payloadData, accessTokenSecret, { algorithm: "HS256", expiresIn: '20m' });
                 const refreshToken = jwt.sign(payloadData, refreshTokenSecret);
         
                 refreshTokens.push(refreshToken);
