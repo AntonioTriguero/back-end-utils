@@ -3,20 +3,19 @@ const jwt = require('jsonwebtoken');
 
 const Auth = {
     build(usersCollection, payloadData) {
-        const users = usersCollection;
-        const accessTokenSecret = 'youraccesstokensecret';
-        const refreshTokenSecret = 'yourrefreshtokensecrethere';
-        const refreshTokens = [];
+        users = usersCollection;
+        accessTokenSecret = process.env.TOKEN_SECRET;
+        refreshTokenSecret = process.env.TOKEN_SECRET;
+        refreshTokens = [];
 
         const router = express.Router();
 
-        router.post('/login', (req, res) => {
-            const { id } = req.body;
-            const user = users.find(u => { return u.id === id });
+        router.post('/login', async (req, res) => {
+            const user = await users.findOne({ id: req.body.id });
         
             if (user) {
                 payloadData['uid'] = user.id;
-                const accessToken = jwt.sign(payloadData, accessTokenSecret, { algorithm: "HS256", expiresIn: '20m' });
+                const accessToken = jwt.sign(payloadData, accessTokenSecret, { noTimestamp: true, expiresIn: '20m' });
                 const refreshToken = jwt.sign(payloadData, refreshTokenSecret);
         
                 refreshTokens.push(refreshToken);
