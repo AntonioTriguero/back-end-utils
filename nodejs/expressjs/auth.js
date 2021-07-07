@@ -2,8 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 
 const Auth = {
-    build(usersCollection, payloadData) {
-        users = usersCollection;
+    build(getUser, payloadData) {
         accessTokenSecret = process.env.TOKEN_SECRET;
         refreshTokenSecret = process.env.TOKEN_SECRET;
         refreshTokens = [];
@@ -11,7 +10,7 @@ const Auth = {
         const router = express.Router();
 
         router.post('/login', async (req, res) => {
-            const user = await users.findOne({ id: req.body.id });
+            const user = await getUser(req);
         
             if (user) {
                 payloadData['uid'] = user.id;
@@ -22,7 +21,7 @@ const Auth = {
         
                 res.json({ accessToken, refreshToken});
             } else {
-                res.send('Username or password incorrect');
+                res.send('Incorrect user credentials');
             }
         });
 
