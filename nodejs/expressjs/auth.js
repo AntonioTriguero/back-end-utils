@@ -3,8 +3,8 @@ const jwt = require('jsonwebtoken');
 
 const Auth = {
     build(getUser, payloadData) {
-        accessTokenSecret = process.env.TOKEN_SECRET;
-        refreshTokenSecret = process.env.TOKEN_SECRET;
+        accessTokenSecret = process.env.API_TOKEN_SECRET;
+        refreshTokenSecret = process.env.API_TOKEN_SECRET;
         refreshTokens = [];
 
         const router = express.Router();
