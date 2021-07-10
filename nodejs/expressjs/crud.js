@@ -34,9 +34,17 @@ class CRUDController {
         return true;
     }
 
-    async get(req, res) {
+    async getOne(req, res) {
         const query = this.query(req.params);
         const elem = await this.collection.findOne(query);
+        if (elem !== null) delete elem["_id"];
+        const code = null !== elem ? 200 : 404;
+        return res.status(code).send(elem);
+    }
+
+    async getSome(req, res) {
+        const query = this.query(req.params);
+        const elem = await this.collection.find(query).toArray();
         if (elem !== null) delete elem["_id"];
         const code = null !== elem ? 200 : 404;
         return res.status(code).send(elem);
@@ -91,8 +99,9 @@ const CRUDRouterBuilder = {
 
         const router = express.Router();
 
+        router.get(mainUri, (req, res, next) => controller.getOne(req, res));
         for (const uri of getUris) {
-            router.get(uri, (req, res, next) => controller.get(req, res));
+            router.get(uri, (req, res, next) => controller.getSome(req, res));
         }
         router.post(path, (req, res, next) => controller.post(req, res));
         router.put(mainUri, (req, res, next) => controller.put(req, res));
